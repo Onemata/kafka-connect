@@ -1,0 +1,69 @@
+version: '3'
+services:
+  kafka-connect:
+    image: onemata/kafka-connect
+    build:
+      context: .
+    container_name: kafka-connect
+    ports:
+      - "8083:80"
+      - "9400:9400"
+    links:
+      - kafka
+      - mongo
+      - schema-registry
+    environment:
+      - CONNECT_BOOTSTRAP_SERVERS=kafka:9092
+      - CONNECT_GROUP_ID=local
+      - CONNECT_CONFIG_STORAGE_TOPIC=local-config
+      - CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR=1
+      - CONNECT_OFFSET_STORAGE_TOPIC=local-offsets
+      - CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR=1
+      - CONNECT_STATUS_STORAGE_TOPIC=local-status
+      - CONNECT_STATUS_STORAGE_REPLICATION_FACTOR=1
+      - CONNECT_KEY_CONVERTER_SCHEMA_REGISTRY_URL=http://schema-registry:8081
+      - CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL=http://schema-registry:8081
+      - CONNECT_REST_ADVERTISED_HOST_NAME=kafka-connect
+
+  schema-registry:
+    image: confluentinc/cp-schema-registry:4.0.0
+    container_name: schema-registry
+    links:
+      - kafka
+    ports:
+      - "8081:80"
+    environment:
+      - SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS=PLAINTEXT://kafka:9092
+      - SCHEMA_REGISTRY_HOST_NAME=schema-registry
+      - SCHEMA_REGISTRY_LISTENERS=http://0.0.0.0:80
+      - SCHEMA_REGISTRY_DEBUG=true
+      - SCHEMA_REGISTRY_KAFKASTORE_REPLICATION_FACTOR=1
+      - SCHEMA_REGISTRY_ACCESS_CONTROL_ALLOW_ORIGIN=*
+
+  kafka:
+    image: confluentinc/cp-kafka:4.0.0
+    container_name: kafka
+    environment:
+    ports:
+      - "9092:9092"
+    links:
+      - zookeeper
+    environment:
+      - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+  
+  zookeeper:
+    image: confluentinc/cp-zookeeper:4.0.0
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      - ZOOKEEPER_CLIENT_PORT=2181
+
+  mongo:
+    image: mongo:3.2
+    container_name: mongo
+    command: ["mongod", "--replSet", "rs0"]
+    ports:
+      - "27017:27017"
